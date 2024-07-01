@@ -13,11 +13,13 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+// 로우 트랜잭션 생성
 func GenerateTransaction(nonce uint64, to common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *types.Transaction {
 	tx := types.NewTransaction(nonce, to, amount, gasLimit, gasPrice, nil)
 	return tx
 }
 
+// Private Key를 사용하여 트랜잭션 생성 및 서명 -> 서명 트랜잭션
 func SignTransactionWithPrivateKey(client *ethclient.Client, privateKey *ecdsa.PrivateKey, toAddress common.Address, amount *big.Int) (*types.Transaction, error) {
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
@@ -52,6 +54,7 @@ func SignTransactionWithPrivateKey(client *ethclient.Client, privateKey *ecdsa.P
 	return signedTx, nil
 }
 
+// 서명 트랜잭션 브로드캐스트
 func SendSignedTransaction(client *ethclient.Client, signedTx *types.Transaction) error {
 	err := client.SendTransaction(context.Background(), signedTx)
 	if err != nil {
@@ -62,6 +65,7 @@ func SendSignedTransaction(client *ethclient.Client, signedTx *types.Transaction
 	return nil
 }
 
+// 트랜잭션 RLP 인코딩
 func EncodeTransactionRLP(tx *types.Transaction) ([]byte, error) {
 	var buf bytes.Buffer
 	err := tx.EncodeRLP(&buf)
