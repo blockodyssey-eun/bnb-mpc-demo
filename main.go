@@ -14,6 +14,7 @@ import (
 	"time"
 	tss_ecdsa "tss_demo/lib/ecdsa"
 	"tss_demo/lib/eth"
+	"tss_demo/lib/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -183,7 +184,7 @@ func createAndInitializeParties(numParties int) parties {
 }
 
 func main() {
-	INFURA_KEY, _ := loadENV()
+	INFURA_KEY, PRIVATE_KEY := loadENV()
 
 	infuraURL := fmt.Sprintf("https://sepolia.infura.io/v3/%s", INFURA_KEY)
 	client, err := ethclient.Dial(infuraURL)
@@ -228,8 +229,8 @@ func main() {
 	fmt.Println("주소: \n", address)
 
 	// 테스트 이더 주입
-	amount := big.NewInt(100000000000000) // 0.0001 Ether
-	// utils.InjectTestEther(client, PRIVATE_KEY, common.HexToAddress(address), amount)
+	amount := big.NewInt(1000000000000000) // 0.0001 Ether
+	utils.InjectTestEther(client, PRIVATE_KEY, common.HexToAddress(address), amount)
 
 	// 서명되지 않은 트랜잭션 생성
 	signer := types.NewEIP155Signer(chainID)
@@ -267,20 +268,13 @@ func main() {
 		fmt.Printf("ASN.1 디코딩 실패: %v\n", err)
 		return
 	}
-	fmt.Printf("트랜잭션 해시: \n%s", txHash)
 	fmt.Printf("서명 값:\nR: %s\nS: %s\n", signature.R.Text(16), signature.S.Text(16))
 	signatureBytes := append(signature.R.Bytes(), signature.S.Bytes()...)
 
 	verification_by_goethereum := crypto.VerifySignature(crypto.FromECDSAPub(pk), txHash, signatureBytes)
 	fmt.Printf("Signature valid by goethereum: %t\n", verification_by_goethereum)
-	// v := byte(27) // 기본값으로 27 설정
 
-	// // EIP-155에 따른 V 값 조정
-	// if chainID.Sign() != 0 {
-	// 	v = byte(signature.R.Sign() + 35 + int(chainID.Uint64()*2))
-	// } else {
-	// 	v = byte(signature.R.Sign() + 27)
-	// }
+	// V
 	var recid int64 = 0
 	V := byte(big.NewInt(recid).Uint64())
 	signatureBytes = append(signatureBytes, V)
@@ -295,7 +289,11 @@ func main() {
 		log.Fatalf("Failed to recover sender: %v", err)
 	}
 	fmt.Printf("Recovered sender: %s\n", sender.Hex())
-	fmt.Println("\nBefore signing:")
+
+	err = eth.SendSignedTransaction(client, signedTx, true)
+	if err != nil {
+		log.Fatalf("failed to send signed transaction: %v", err)
+	}
 }
 
 // keccak256 해싱
